@@ -28,11 +28,11 @@ def evaluate(
         top_p=0.9,
         top_k=40,
         num_beams=1,
-        max_new_tokens=2048,
+        max_length=2048,
         **kwargs,
 ):
     prompts = generate_prompt(batch_data, input)
-    inputs = tokenizer(prompts, return_tensors="pt", max_length=256, truncation=True, padding=True)
+    inputs = tokenizer(prompts, return_tensors="pt", truncation=True, padding=True)
     input_ids = inputs["input_ids"].to(device)
     generation_config = GenerationConfig(
         temperature=temperature,
@@ -49,7 +49,7 @@ def evaluate(
             generation_config=generation_config,
             return_dict_in_generate=True,
             output_scores=True,
-            max_new_tokens=max_new_tokens,
+            max_length=max_length,
         )
     s = generation_output.sequences
     output = tokenizer.batch_decode(s, skip_special_tokens=True)
@@ -105,14 +105,23 @@ def main(
     for num, line in enumerate(input_data):
         one_data = line
         id = one_data["idx"]
-        instruction = one_data["Instruction"]
+        instruction = one_data["instruction"]
         print(instruction)
         _output = evaluate(instruction, tokenizer, model)
-        final_output = _output[0].split("### Response:")[1].strip()
+        target = one_data['output']
+        if len(_output[0].split("### Response:")) > 1:
+            final_output = _output[0].split("### Response:")[1].strip()
+        else:
+            print(id, 'Did not find ### Response: in output')
+            tokenized = tokenizer(_output[0], return_tensors="pt")
+            print('Number of tokens', len(tokenized))
+            print(_output[0],'\n=====================================================')
+            final_output = 'NO OUTPUT'
         new_data = {
             "id": id,
             "instruction": instruction,
-            "wizardcoder": final_output
+            "wizardcoder": final_output,
+            "output": target
         }
         output_data.write(new_data)
 
