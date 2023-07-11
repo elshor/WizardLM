@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import wandb
 import random
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Sequence
@@ -25,6 +26,8 @@ from torch.utils.data import Dataset
 from transformers import Trainer
 from datasets import load_dataset
 import utils
+
+wandb.init(project="n5")
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = "[PAD]"
