@@ -130,12 +130,14 @@ def preprocess(
     tokenizer: transformers.PreTrainedTokenizer,
 ) -> Dict:
     """Preprocess the data by tokenizing."""
+    print('preprocessing the data ...')
     examples = [s + t for s, t in zip(sources, targets)]
     examples_tokenized, sources_tokenized = [_tokenize_fn(strings, tokenizer) for strings in (examples, sources)]
     input_ids = examples_tokenized["input_ids"]
     labels = copy.deepcopy(input_ids)
     for label, source_len in zip(labels, sources_tokenized["input_ids_lens"]):
         label[:source_len] = IGNORE_INDEX
+    print('... preprocessing the data completed')
     return dict(input_ids=input_ids, labels=labels)
 
 
@@ -178,13 +180,15 @@ def train_tokenize_function(examples, tokenizer):
 
 
 def train():
+    print('Starting train')
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-        
+    print('loading model ...')
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
     )
+    print('... model loaded')
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
@@ -200,6 +204,7 @@ def train():
             model=model,
         )
     if "starcoder" in model_args.model_name_or_path:
+        print('adding special tokens for starcoder')
         tokenizer.add_special_tokens(
             {
                 "eos_token": DEFAULT_EOS_TOKEN,
@@ -208,11 +213,13 @@ def train():
                 "pad_token": DEFAULT_PAD_TOKEN,
             }
         )
-
+    print('loading dataset ...')
     raw_train_datasets = load_dataset('json', data_files=data_args.data_path, split="train", cache_dir=training_args.cache_dir)
+    print('... dataset loaded')
     if training_args.local_rank > 0: 
         torch.distributed.barrier()
 
+    print('mapping dataset ... ')
     train_dataset = raw_train_datasets.map(
         train_tokenize_function,
         batched=True,
@@ -223,6 +230,7 @@ def train():
         desc="Running tokenizer on train dataset",
         fn_kwargs={"tokenizer": tokenizer}
     )
+    print('... mapping dataset completed')
 
     if training_args.local_rank == 0:
         torch.distributed.barrier()
@@ -241,8 +249,9 @@ def train():
 
     trainer = Trainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     model.config.use_cache = False
-
+    print('before actual training ...')
     trainer.train()
+    print('... training completed')
     trainer.save_state()
     safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
