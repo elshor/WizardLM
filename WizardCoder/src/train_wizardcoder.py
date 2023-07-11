@@ -214,7 +214,7 @@ def train():
             }
         )
     print('loading dataset ...')
-    raw_train_datasets = load_dataset('json', data_files=data_args.data_path, split="train", cache_dir=training_args.cache_dir)
+    raw_train_datasets = load_dataset('json', data_files=data_args.data_path, cache_dir=training_args.cache_dir)
     print('... dataset loaded')
     if training_args.local_rank > 0: 
         torch.distributed.barrier()
@@ -223,8 +223,8 @@ def train():
     train_dataset = raw_train_datasets.map(
         train_tokenize_function,
         batched=True,
-        batch_size=3000,
-        num_proc=32,
+        batch_size=8,
+        num_proc=4,
         remove_columns=raw_train_datasets.column_names,
         load_from_cache_file=True, # not args.overwrite_cache
         desc="Running tokenizer on train dataset",
