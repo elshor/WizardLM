@@ -222,10 +222,6 @@ def train():
     print('mapping dataset ... ')
     train_dataset = raw_train_datasets.map(
         train_tokenize_function,
-        batched=True,
-        batch_size=8,
-        num_proc=4,
-        remove_columns=raw_train_datasets.column_names,
         load_from_cache_file=True, # not args.overwrite_cache
         desc="Running tokenizer on train dataset",
         fn_kwargs={"tokenizer": tokenizer}
